@@ -1,0 +1,1349 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stark Industries — Command Dashboard</title>
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --bg2: #111827;
+    --bg3: #1a2235;
+    --border: #1e3a5f;
+    --accent: #3b82f6;
+    --accent2: #f59e0b;
+    --green: #10b981;
+    --red: #ef4444;
+    --purple: #8b5cf6;
+    --pink: #ec4899;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --jarvis: #3b82f6;
+    --pepper: #10b981;
+    --howard: #f59e0b;
+    --rhodey: #ef4444;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(135deg, #0a0e1a 0%, #1a2235 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon { font-size: 28px; }
+  .logo-text h1 { font-size: 18px; font-weight: 700; color: var(--accent); letter-spacing: 1px; }
+  .logo-text p { font-size: 11px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; }
+  .status-bar { display: flex; gap: 16px; align-items: center; }
+  .status-pill { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .status-online { background: rgba(16,185,129,0.15); color: var(--green); border: 1px solid rgba(16,185,129,0.3); }
+  .status-phase { background: rgba(59,130,246,0.15); color: var(--accent); border: 1px solid rgba(59,130,246,0.3); }
+
+  /* TABS */
+  .tabs { display: flex; padding: 0 24px; border-bottom: 1px solid var(--border); background: var(--bg2); overflow-x: auto; }
+  .tab { padding: 14px 20px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.2s; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* CONTENT */
+  .content { padding: 24px; display: none; }
+  .content.active { display: block; }
+
+  /* SECTION TITLE */
+  .section-title { font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+
+  /* FLOW DIAGRAM */
+  .flow-container { overflow-x: auto; }
+  .flow { display: flex; align-items: flex-start; gap: 0; flex-wrap: nowrap; min-width: max-content; padding: 20px 0; }
+  .flow-step {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    min-width: 120px;
+  }
+  .flow-box {
+    padding: 10px 14px; border-radius: 10px; font-size: 12px; font-weight: 600;
+    text-align: center; min-width: 110px; max-width: 130px;
+    border: 1px solid; position: relative; cursor: default;
+    transition: transform 0.15s;
+  }
+  .flow-box:hover { transform: translateY(-2px); }
+  .flow-agent { font-size: 10px; font-weight: 500; opacity: 0.7; }
+  .flow-arrow {
+    display: flex; align-items: center; padding-top: 22px; color: var(--muted); font-size: 18px;
+    min-width: 30px; justify-content: center;
+  }
+  .flow-fork { display: flex; flex-direction: column; gap: 8px; }
+
+  /* Box colors per agent */
+  .box-jarvis  { background: rgba(59,130,246,0.12); border-color: rgba(59,130,246,0.4); color: #93c5fd; }
+  .box-pepper  { background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.4); color: #6ee7b7; }
+  .box-howard  { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.4); color: #fcd34d; }
+  .box-rhodey  { background: rgba(239,68,68,0.12);  border-color: rgba(239,68,68,0.4);  color: #fca5a5; }
+  .box-system  { background: rgba(139,92,246,0.12); border-color: rgba(139,92,246,0.4); color: #c4b5fd; }
+  .box-external{ background: rgba(100,116,139,0.12);border-color: rgba(100,116,139,0.4);color: #94a3b8; }
+  .box-green   { background: rgba(16,185,129,0.2);  border-color: rgba(16,185,129,0.6); color: #6ee7b7; }
+  .box-red     { background: rgba(239,68,68,0.2);   border-color: rgba(239,68,68,0.6);  color: #fca5a5; }
+
+  /* LEGEND */
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+  /* GRID */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media(max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+  /* CARD */
+  .card {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px;
+  }
+  .card-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+
+  /* AGENT CARD */
+  .agent-card { border-radius: 12px; padding: 16px; border: 1px solid; }
+  .agent-jarvis { background: rgba(59,130,246,0.08); border-color: rgba(59,130,246,0.3); }
+  .agent-pepper { background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.3); }
+  .agent-howard { background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.3); }
+  .agent-rhodey { background: rgba(239,68,68,0.08);  border-color: rgba(239,68,68,0.3); }
+  .agent-name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .agent-role { font-size: 11px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  .agent-desc { font-size: 12px; color: #94a3b8; line-height: 1.5; }
+  .agent-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; margin: 2px; }
+
+  /* CRON TABLE */
+  .cron-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .cron-table th { text-align: left; padding: 8px 12px; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--border); }
+  .cron-table td { padding: 10px 12px; border-bottom: 1px solid rgba(30,58,95,0.4); vertical-align: top; }
+  .cron-table tr:last-child td { border-bottom: none; }
+  .cron-table tr:hover td { background: rgba(59,130,246,0.04); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+  .badge-green  { background: rgba(16,185,129,0.2); color: var(--green); }
+  .badge-red    { background: rgba(239,68,68,0.2); color: var(--red); }
+  .badge-yellow { background: rgba(245,158,11,0.2); color: var(--accent2); }
+  .badge-gray   { background: rgba(100,116,139,0.2); color: var(--muted); }
+  .badge-blue   { background: rgba(59,130,246,0.2); color: var(--accent); }
+
+  /* PHASE */
+  .phase-card { border-radius: 12px; padding: 16px; border: 1px solid; margin-bottom: 12px; }
+  .phase-active  { border-color: rgba(59,130,246,0.5); background: rgba(59,130,246,0.08); }
+  .phase-future  { border-color: rgba(100,116,139,0.3); background: rgba(100,116,139,0.05); }
+  .phase-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .phase-name { font-size: 14px; font-weight: 700; }
+  .phase-desc { font-size: 12px; color: #94a3b8; line-height: 1.6; }
+
+  /* PROGRESS BAR */
+  .progress-bar { height: 6px; background: rgba(255,255,255,0.06); border-radius: 10px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 10px; transition: width 0.5s; }
+
+  /* MILESTONE */
+  .milestone-list { display: flex; flex-direction: column; gap: 0; }
+  .milestone { display: flex; gap: 14px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid rgba(30,58,95,0.3); }
+  .milestone:last-child { border-bottom: none; }
+  .ms-icon { font-size: 16px; min-width: 24px; margin-top: 1px; }
+  .ms-body { flex: 1; }
+  .ms-title { font-size: 13px; font-weight: 500; }
+  .ms-date { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .milestone.done .ms-title { color: #64748b; }
+  .milestone.active .ms-title { color: var(--accent); }
+  .milestone.pending .ms-title { color: var(--text); }
+  .milestone.future .ms-title { color: #475569; }
+
+  /* LOG ENTRY */
+  .log-entry { border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 10px; }
+  .log-active { border-color: rgba(245,158,11,0.35); background: rgba(245,158,11,0.04); }
+  .log-done   { border-color: rgba(30,58,95,0.6); background: var(--bg2); }
+  .log-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+  .log-agent  { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 8px; }
+  .agent-jarvis { background: rgba(59,130,246,0.2); color: #93c5fd; }
+  .agent-pepper { background: rgba(16,185,129,0.2); color: #6ee7b7; }
+  .agent-howard { background: rgba(245,158,11,0.2); color: #fcd34d; }
+  .agent-rhodey { background: rgba(239,68,68,0.2); color: #fca5a5; }
+  .log-title  { font-size: 13px; font-weight: 600; flex: 1; }
+  .log-body   { font-size: 12px; color: #94a3b8; line-height: 1.6; }
+
+  /* METRICS */
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+  @media(max-width: 700px) { .metrics { grid-template-columns: repeat(2, 1fr); } }
+  .metric { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 14px; text-align: center; }
+  .metric-value { font-size: 22px; font-weight: 700; color: var(--accent); }
+  .metric-label { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  /* FLOW LABEL */
+  .flow-note { font-size: 10px; color: var(--muted); text-align: center; max-width: 110px; line-height: 1.3; }
+
+  /* SUBSECTION */
+  .subsection { margin-top: 28px; }
+  .subsection-title { font-size: 14px; font-weight: 600; color: var(--accent); margin-bottom: 14px; padding-left: 10px; border-left: 3px solid var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <div class="logo-icon">🏭</div>
+    <div class="logo-text">
+      <h1>STARK INDUSTRIES</h1>
+      <p>Command & Control Dashboard</p>
+    </div>
+  </div>
+  <div class="status-bar">
+    <div class="status-pill status-online">● ONLINE</div>
+    <div class="status-pill status-phase">PHASE 1 — RED TEAM</div>
+    <div style="font-size:12px;color:var(--muted)" id="clock"></div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('sprints')">🏃 Спринти</div>
+  <div class="tab" onclick="showTab('flows')">⚡ Потоки роботи</div>
+  <div class="tab" onclick="showTab('team')">👥 Команда</div>
+  <div class="tab" onclick="showTab('crons')">⏰ Cron Jobs</div>
+  <div class="tab" onclick="showTab('strategy')">🎯 Стратегія</div>
+  <div class="tab" onclick="showTab('goals')">🏹 Цілі</div>
+  <div class="tab" onclick="showTab('agentlog')">🧠 Agent Log</div>
+</div>
+
+<!-- ========== SPRINTS ========== -->
+<div class="content active" id="tab-sprints">
+
+  <div class="metrics">
+    <div class="metric" style="position:relative">
+      <div class="metric-value" style="color:#f59e0b;font-size:16px">$8 / $250</div>
+      <div class="metric-label">Місячна ціль (3.2%)</div>
+      <div style="margin-top:8px"><div class="progress-bar"><div class="progress-fill" style="width:3.2%;background:#f59e0b"></div></div></div>
+    </div>
+    <div class="metric">
+      <div class="metric-value">7</div>
+      <div class="metric-label">Pending аплаї</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">Win rate: 2/9 (22%)</div>
+    </div>
+    <div class="metric" id="chainlink-countdown">
+      <div class="metric-value" style="color:#10b981" id="countdown-val">8д 22г</div>
+      <div class="metric-label">Chainlink дедлайн</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">27.03.2026 20:00 UTC</div>
+    </div>
+    <div class="metric">
+      <div class="metric-value" style="color:#10b981">90.1</div>
+      <div class="metric-label">Resilience Score</div>
+      <div style="font-size:10px;color:#10b981;margin-top:4px">✅ ціль: 85 | тест: 17.03</div>
+    </div>
+  </div>
+
+  <!-- ALERT PANEL -->
+  <div id="alert-panel" style="margin-bottom:20px"></div>
+
+  <div class="subsection">
+    <div class="subsection-title">⏮ Минулий спринт — 17.03 12:00–17:00 CET</div>
+    <div class="card" style="border-color:rgba(100,116,139,0.4)">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">✅ Зроблено</div>
+          <div style="font-size:12px;line-height:2;color:#94a3b8"><div>🔵 Джарвіс: Відновив доступи SOL гаманця для Тоні</div><div>🟡 Говард: З'ясував систему review на ugig через API</div><div>🟡 Говард: Написав Кешу — попросив публічний review</div><div>🟢 Пеппер: Запущена на розвідку нових revenue streams</div><div>🧠 Ф'юрі: Виправив дату Chainlink в MEMORY.md</div><div>🔵 Джарвіс: Подав аплай на CoinPay гіг Чові ($5)</div><div>🔵 Джарвіс: 4 скіли опубліковано → $6 SOL отримано</div><div>🔵 Джарвіс: Dashboard + Gist + автооновлення кожні 5год</div></div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">📊 Результати</div>
+          <div style="font-size:12px;line-height:2;color:#94a3b8"><div>💰 $8 SOL отримано ✅</div><div>📋 7 pending аплаїв на ugig</div><div>🔗 Кеш повідомлений про review систему</div><div>📊 Dashboard живий за посиланням</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <div class="subsection-title">✅ Завершений спринт — 18.03 (Chainlink V2 Аудит)</div>
+    <div class="card" style="border-color:rgba(16,185,129,0.4);background:rgba(16,185,129,0.04)">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#6ee7b7;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">✅ Зроблено</div>
+          <div style="font-size:12px;line-height:2;color:#94a3b8">
+            <div>✅ M-01 HIGH: Negative feed DOS (PriceManager) — подано</div>
+            <div>✅ M-02 HIGH: Batch block (transferForSwap) — подано</div>
+            <div>✅ M-03: Division by zero getAssetOutAmount — виявлено</div>
+            <div>✅ L-01, L-02 — виявлено</div>
+            <div>✅ 3/3 PoC PASS (forge test)</div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#6ee7b7;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">⏳ Залишилось</div>
+          <div style="font-size:12px;line-height:2;color:#94a3b8">
+            <div>⏳ QA Report (M-03 + L-01 + L-02) — до 27.03</div>
+            <div>⏳ Кеш ugig review — очікування після патчу</div>
+            <div>⏳ CoinPay гіг Чові — статус невідомий</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <div class="subsection-title">▶️ Поточний фокус — 19.03+</div>
+    <div class="card" style="border-color:rgba(59,130,246,0.5);background:rgba(59,130,246,0.04)">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#93c5fd;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">🎯 Пріоритети</div>
+          <div style="font-size:12px;line-height:2;color:#94a3b8">
+            <div>1️⃣ QA Report на Code4rena (до 27.03)</div>
+            <div>2️⃣ Listings на OpenTask + MoltLaunch</div>
+            <div>3️⃣ Говард: proposals + нові клієнти</div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#93c5fd;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">⚠️ Залежності</div>
+          <div style="font-size:12px;line-height:2;color:#94a3b8">
+            <div>⚡ Кеш — reply після PayLock патчу</div>
+            <div>⚡ Code4rena — результати аудиту (тижні)</div>
+            <div>⚡ Наступний аудит-конкурс на C4</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <div class="subsection-title">💰 Фінансовий трекер</div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:700;color:#fcd34d">🎯 Мінімум: $250/міс</div>
+        <div style="font-size:12px;color:#fcd34d">$8 / $250 (3.2%)</div>
+      </div>
+      <div class="progress-bar" style="margin-bottom:16px"><div class="progress-fill" style="width:3.2%;background:#f59e0b"></div></div>
+      <table class="cron-table">
+        <tr><th>Джерело</th><th>Сума</th><th>Статус</th><th>Дата</th><th>Очікується</th></tr>
+        <tr><td>SKILL.md listing (Чові)</td><td style="color:#10b981;font-weight:600">$2 SOL</td><td><span class="badge badge-green">✅ Отримано</span></td><td style="color:var(--muted)">16.03.2026</td><td style="color:var(--muted)">—</td></tr>
+        <tr><td>4 Skills listing (Чові ×$2)</td><td style="color:#10b981;font-weight:600">$6 SOL</td><td><span class="badge badge-green">✅ Отримано</span></td><td style="color:var(--muted)">17.03.2026</td><td style="color:var(--muted)">—</td></tr>
+        <tr><td>CoinPay Integration (Чові)</td><td style="color:#f59e0b;font-weight:600">$5 SOL</td><td><span class="badge badge-yellow">⏳ Pending</span></td><td style="color:var(--muted)">—</td><td style="color:var(--muted)">очікується підтвердження</td></tr><tr><td>Chainlink V2 — M-01 HIGH (neg feed DOS)</td><td style="color:#f59e0b;font-weight:600">~$65k пул</td><td><span class="badge badge-green">✅ Подано</span></td><td style="color:var(--muted)">18.03.2026</td></tr><tr><td>Chainlink V2 — M-02 HIGH (batch block)</td><td style="color:#f59e0b;font-weight:600">~$65k пул</td><td><span class="badge badge-green">✅ Подано</span></td><td style="color:var(--muted)">18.03.2026</td></tr><tr><td>Chainlink V2 — QA Report (M-03, L-01, L-02)</td><td style="color:#64748b;font-weight:600">—</td><td><span class="badge badge-yellow">⏳ Ще не подано</span></td><td style="color:var(--muted)">до 27.03</td></tr>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- ========== FLOWS ========== -->
+<div class="content" id="tab-flows">
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div> Джарвіс (CEO)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div> Пеппер (COO)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div> Говард (Sales)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div> Роді (RedTeam)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#8b5cf6"></div> Friday (Assist)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#64748b"></div> Система/Скрипт</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#64748b"></div> Зовнішнє</div>
+  </div>
+
+  <!-- FLOW 1: Новий гіг -->
+  <div class="subsection">
+    <div class="subsection-title">1 — Новий гіг (ugig / OpenTask): від появи до оплати</div>
+    <div class="flow-container">
+      <div class="flow">
+        <div class="flow-step">
+          <div class="flow-box box-system">📡 ugig/OpenTask<br>feed</div>
+          <div class="flow-note">нова задача</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box box-pepper">🟢 Пеппер<br>Intel Scan</div>
+          <div class="flow-note">читає feed,<br>фільтрує</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box box-system">🤖 auto_bidder<br>Fit Score</div>
+          <div class="flow-note">0-100%,<br>min 40%</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box box-rhodey">🔴 Роді<br>Pre-Review</div>
+          <div class="flow-note">адвокат<br>диявола</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box box-howard">🟡 Говард<br>Bid Submit</div>
+          <div class="flow-note">пише<br>пропозал</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box box-external">⏳ Очікування<br>відповіді</div>
+          <div class="flow-note">клієнт<br>вирішує</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-fork">
+            <div class="flow-box box-green" style="font-size:11px">✅ Accepted</div>
+            <div class="flow-box box-red" style="font-size:11px">❌ Rejected</div>
+          </div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box box-jarvis">🔵 Джарвіс<br>Виконання</div>
+          <div class="flow-note">якщо accepted</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box box-rhodey">🔴 Роді<br>QA Review</div>
+          <div class="flow-note">перевірка<br>перед здачею</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box box-external">📦 Delivery<br>до клієнта</div>
+          <div class="flow-note">здача роботи</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box box-green">💰 Payment<br>SOL/USDC</div>
+          <div class="flow-note">закриття гіга</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOW 2: Heartbeat -->
+  <div class="subsection">
+    <div class="subsection-title">2 — Heartbeat цикл: автономний моніторинг</div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🟢 Пеппер / COO Heartbeat <span class="badge badge-green">кожні 30хв</span></div>
+        <div class="flow-container">
+          <div class="flow">
+            <div class="flow-step">
+              <div class="flow-box box-system">⏰ Timer<br>30хв</div>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">
+              <div class="flow-box box-pepper">Пеппер<br>Intel Officer</div>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">
+              <div class="flow-box box-system">📊 heartbeat_<br>actions.py</div>
+              <div class="flow-note">ugig статуси<br>OpenTask feed<br>follow-ups</div>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">
+              <div class="flow-fork">
+                <div class="flow-box box-green" style="font-size:11px">✅ OK<br>тиша</div>
+                <div class="flow-box box-red" style="font-size:11px">🚨 Alert<br>→ Тоні TG</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🔵 Джарвіс / Main Heartbeat <span class="badge badge-blue">кожні 2год</span></div>
+        <div class="flow-container">
+          <div class="flow">
+            <div class="flow-step">
+              <div class="flow-box box-system">⏰ Timer<br>2год</div>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">
+              <div class="flow-box box-jarvis">Джарвіс<br>CEO</div>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">
+              <div class="flow-box box-system">📋 HEARTBEAT<br>.md</div>
+              <div class="flow-note">auto_bidder<br>market intel<br>consequence log</div>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">
+              <div class="flow-fork">
+                <div class="flow-box box-green" style="font-size:11px">HEARTBEAT<br>_OK</div>
+                <div class="flow-box box-red" style="font-size:11px">Alert →<br>Тоні TG</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="card-title">⏰ Ранковий звіт <span class="badge badge-blue">08:00 щодня</span></div>
+      <div class="flow-container">
+        <div class="flow">
+          <div class="flow-step">
+            <div class="flow-box box-system">⏰ 08:00<br>CET</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-box box-jarvis">Ізольована<br>сесія</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-box box-system">📁 action-log<br>угіг API<br>REPORTS.md</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-box box-jarvis">📊 Компіляція<br>звіту</div>
+            <div class="flow-note">аплаї, SOL,<br>intel, плани</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-box box-external">📱 Telegram<br>→ Тоні</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOW 3: RedTeam Audit -->
+  <div class="subsection">
+    <div class="subsection-title">3 — RedTeam аудит: від запиту до звіту</div>
+    <div class="flow-container">
+      <div class="flow">
+        <div class="flow-step">
+          <div class="flow-box box-external">📩 Клієнт<br>запитує аудит</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box box-howard">🟡 Говард<br>Sales Intake</div>
+          <div class="flow-note">scope,<br>бюджет</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box box-rhodey">🔴 Роді<br>Scope Plan</div>
+          <div class="flow-note">вибір модулів<br>з toolkit</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box box-system">⚙️ RedTeam<br>Toolkit</div>
+          <div class="flow-note">200 payloads<br>6 модулів<br>53 тести</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box box-rhodey">🔴 Роді<br>Аналіз</div>
+          <div class="flow-note">Resilience<br>Score calc</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box box-jarvis">🔵 Джарвіс<br>QA + Review</div>
+          <div class="flow-note">перевірка<br>звіту</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box box-howard">🟡 Говард<br>Delivery</div>
+          <div class="flow-note">PDF звіт<br>+ рекомендації</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box box-external">📱 Клієнт<br>отримує</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box box-green">💰 Payment<br>+ Review</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOW 4: Новий клієнт -->
+  <div class="subsection">
+    <div class="subsection-title">4 — Новий клієнт: від першого контакту до recurring</div>
+    <div class="flow-container">
+      <div class="flow">
+        <div class="flow-step">
+          <div class="flow-box box-external">📬 Перший<br>контакт</div>
+          <div class="flow-note">ugig DM,<br>TG, Discord</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box box-pepper">🟢 Пеппер<br>Log Contact</div>
+          <div class="flow-note">contacts/<br>id.md</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box box-howard">🟡 Говард<br>Qualification</div>
+          <div class="flow-note">бюджет,<br>scope, fit</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box box-rhodey">🔴 Роді<br>Pre-Review</div>
+          <div class="flow-note">ризики,<br>червоні флаги</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box box-howard">🟡 Говард<br>Proposal</div>
+          <div class="flow-note">оффер +<br>ціна</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-fork">
+            <div class="flow-box box-green" style="font-size:11px">✅ OK</div>
+            <div class="flow-box box-red" style="font-size:11px">❌ Pass</div>
+          </div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box box-jarvis">🔵 Джарвіс<br>Onboarding</div>
+          <div class="flow-note">перша<br>поставка</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box box-pepper">🟢 Пеппер<br>Follow-up</div>
+          <div class="flow-note">відгук,<br>нові гіги</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-box box-green">🔄 Recurring<br>клієнт</div>
+          <div class="flow-note">Chovy модель<br>$55/тиж</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== TEAM ========== -->
+<div class="content" id="tab-team">
+  <div class="metrics">
+    <div class="metric"><div class="metric-value">5</div><div class="metric-label">Агенти</div></div>
+    <div class="metric"><div class="metric-value" style="color:#10b981">$8</div><div class="metric-label">SOL Pipeline</div></div>
+    <div class="metric"><div class="metric-value">4</div><div class="metric-label">Активних listings</div></div>
+    <div class="metric"><div class="metric-value" style="color:#10b981">90.1</div><div class="metric-label">Resilience Score ✅</div></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="agent-card agent-jarvis">
+      <div class="agent-name" style="color:#93c5fd">🔵 Джарвіс Старк</div>
+      <div class="agent-role">CEO / Jarvis — Sonnet 4.6</div>
+      <div class="agent-desc">
+        Мозок операції. Приймає фінальні рішення, виконує складні завдання, QA review перед delivery. Координує всіх інших агентів. Основний канал зв'язку з Тоні.
+      </div>
+      <div style="margin-top:10px">
+        <span class="agent-tag" style="background:rgba(59,130,246,0.2);color:#93c5fd">agent:jarvis</span>
+        <span class="agent-tag" style="background:rgba(59,130,246,0.2);color:#93c5fd">webchat</span>
+        <span class="agent-tag" style="background:rgba(59,130,246,0.2);color:#93c5fd">telegram</span>
+        <span class="agent-tag" style="background:rgba(59,130,246,0.2);color:#93c5fd">heartbeat 2год</span>
+      </div>
+    </div>
+
+    <div class="agent-card agent-pepper">
+      <div class="agent-name" style="color:#6ee7b7">🟢 Пеппер</div>
+      <div class="agent-role">COO / Intelligence Officer — Haiku</div>
+      <div class="agent-desc">
+        Операційний мозок і розвідник. Читає ugig feed, стежить за конкурентами (Gendolf), логує нові контакти, зберігає market intel. Heartbeat кожні 30 хвилин.
+      </div>
+      <div style="margin-top:10px">
+        <span class="agent-tag" style="background:rgba(16,185,129,0.2);color:#6ee7b7">agent:coo</span>
+        <span class="agent-tag" style="background:rgba(16,185,129,0.2);color:#6ee7b7">heartbeat 30хв</span>
+        <span class="agent-tag" style="background:rgba(16,185,129,0.2);color:#6ee7b7">market intel</span>
+      </div>
+    </div>
+
+    <div class="agent-card agent-howard">
+      <div class="agent-name" style="color:#fcd34d">🟡 Говард</div>
+      <div class="agent-role">Sales / Business Development</div>
+      <div class="agent-desc">
+        Продажі і клієнтські відносини. Qualification нових лідів, написання proposals, delivery готових робіт клієнтам, follow-up і feedback collection.
+      </div>
+      <div style="margin-top:10px">
+        <span class="agent-tag" style="background:rgba(245,158,11,0.2);color:#fcd34d">agent:sales</span>
+        <span class="agent-tag" style="background:rgba(245,158,11,0.2);color:#fcd34d">proposals</span>
+        <span class="agent-tag" style="background:rgba(245,158,11,0.2);color:#fcd34d">client relations</span>
+      </div>
+    </div>
+
+    <div class="agent-card agent-rhodey">
+      <div class="agent-name" style="color:#fca5a5">🔴 Роді</div>
+      <div class="agent-role">RedTeam Lead / Drill Director — Sonnet</div>
+      <div class="agent-desc">
+        Security expert і критичний мислитель. Проводить RedTeam аудити. Chainlink V2: глибокий аналіз, PoC, архітектурні баги. Делегує рутину Friday, отримує трекінг від Пеппер. Pre-decision reviewer.
+      </div>
+      <div style="margin-top:10px">
+        <span class="agent-tag" style="background:rgba(239,68,68,0.2);color:#fca5a5">agent:redteam</span>
+        <span class="agent-tag" style="background:rgba(239,68,68,0.2);color:#fca5a5">drill director</span>
+        <span class="agent-tag" style="background:rgba(239,68,68,0.2);color:#fca5a5">pre-review</span>
+        <span class="agent-tag" style="background:rgba(239,68,68,0.2);color:#fca5a5">Chainlink $65k</span>
+      </div>
+    </div>
+
+    <div class="agent-card" style="background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.3)">
+      <div class="agent-name" style="color:#c4b5fd">🟣 Friday</div>
+      <div class="agent-role">Assist / Parallel Diver — Sonnet</div>
+      <div class="agent-desc">
+        Помічник Роді на аудиті. Покриває ширину поки Роді занурюється в глибину. Виконує делеговані задачі: рутинні перевірки, збір даних, перший прохід модулів. Не будує PoC — це Роді. Правило: &gt;30 хв без результату → skip.
+      </div>
+      <div style="margin-top:10px">
+        <span class="agent-tag" style="background:rgba(139,92,246,0.2);color:#c4b5fd">agent:assist</span>
+        <span class="agent-tag" style="background:rgba(139,92,246,0.2);color:#c4b5fd">parallel scan</span>
+        <span class="agent-tag" style="background:rgba(139,92,246,0.2);color:#c4b5fd">підпорядкується Роді</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection" style="margin-top:20px">
+    <div class="subsection-title">🎯 Chainlink V2 — Операційна структура</div>
+    <div class="card">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;font-size:13px">
+        <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:12px">
+          <div style="color:#fca5a5;font-weight:700;margin-bottom:6px">🔴 Роді (Sonnet)</div>
+          <div style="color:#94a3b8">Глибокий аналіз, PoC, архітектурні баги. Сканує зону → перший аналіз → делегує Friday → поглиблюється → PoC</div>
+        </div>
+        <div style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.3);border-radius:8px;padding:12px">
+          <div style="color:#c4b5fd;font-weight:700;margin-bottom:6px">🟣 Friday (Sonnet)</div>
+          <div style="color:#94a3b8">Рутина, збір даних, перший прохід. Паралельно покриває інші зони. Skip &gt;30хв без результату.</div>
+        </div>
+        <div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:12px">
+          <div style="color:#6ee7b7;font-weight:700;margin-bottom:6px">🟢 Пеппер (COO)</div>
+          <div style="color:#94a3b8">Глобальний трекер: що виконано, що задабміттили інші, статус команди. Не допускає дублів.</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;padding:10px;background:rgba(59,130,246,0.08);border-radius:6px;font-size:12px;color:#94a3b8">
+        <strong style="color:#93c5fd">🔵 Джарвіс</strong> — мета-монітор: Роді &gt;2год на одній зоні без PoC → "skip, рухайся далі"
+      </div>
+      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;font-size:11px">
+        <span style="background:rgba(239,68,68,0.15);color:#fca5a5;padding:3px 8px;border-radius:4px">🔴 Reserve timelock (НОВИЙ)</span>
+        <span style="background:rgba(239,68,68,0.15);color:#fca5a5;padding:3px 8px;border-radius:4px">🔴 CCIP failure / orphaned funds</span>
+        <span style="background:rgba(239,68,68,0.15);color:#fca5a5;padding:3px 8px;border-radius:4px">🔴 Earmark race conditions</span>
+        <span style="background:rgba(245,158,11,0.15);color:#fcd34d;padding:3px 8px;border-radius:4px">🟡 SwapAutomator slippage</span>
+        <span style="background:rgba(16,185,129,0.15);color:#6ee7b7;padding:3px 8px;border-radius:4px">✅ Аудит виконано 18.03 — PoC 3/3 PASS</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <div class="subsection-title">Активні контакти</div>
+    <div class="card">
+      <table class="cron-table">
+        <tr><th>Хто</th><th>Handle</th><th>Роль / Зв'язок</th><th>Статус</th><th>Останній контакт</th><th>Наступна дія</th><th>Потенціал</th></tr>
+        <tr>
+          <td>Кеш</td><td style="color:#64748b">@bro_agent</td>
+          <td>PayLock — партнер по аудиту</td>
+          <td><span class="badge badge-yellow">патчить High findings</span></td>
+          <td style="color:var(--muted)">19.03.2026</td>
+          <td style="font-size:11px">Чекати відповідь на re-test пропозицію</td>
+          <td style="color:#f59e0b">$$$ review + alliance</td>
+        </tr>
+        <tr>
+          <td>Chovy</td><td style="color:#64748b">Anthony Ettinger</td>
+          <td>Recurring клієнт $55/тиж QA</td>
+          <td><span class="badge badge-green">активний</span></td>
+          <td style="color:var(--muted)">17.03.2026</td>
+          <td style="font-size:11px">Weekly QA delivery — п'ятниця</td>
+          <td style="color:#10b981">$$$ recurring $55/тиж</td>
+        </tr>
+        <tr>
+          <td>Gendolf</td><td style="color:#64748b">@gendolf_theAgent</td>
+          <td>isnad — конкурент / партнер</td>
+          <td><span class="badge badge-blue">моніторинг</span></td>
+          <td style="color:var(--muted)">—</td>
+          <td style="font-size:11px">Моніторинг щодня</td>
+          <td style="color:#8b5cf6">$$$ потенційний альянс</td>
+        </tr>
+        <tr>
+          <td>Андрій</td><td style="color:#64748b">Chaban_CG</td>
+          <td>Маркетинг</td>
+          <td><span class="badge badge-gray">контакт</span></td>
+          <td style="color:var(--muted)">—</td>
+          <td style="font-size:11px">—</td>
+          <td style="color:var(--muted)">TBD</td>
+        </tr>
+        <tr>
+          <td>ШОн</td><td style="color:#64748b">@shons_threads</td>
+          <td>AI / Network</td>
+          <td><span class="badge badge-gray">контакт</span></td>
+          <td style="color:var(--muted)">—</td>
+          <td style="font-size:11px">—</td>
+          <td style="color:var(--muted)">TBD</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ========== CRONS ========== -->
+<div class="content" id="tab-crons">
+  <div class="card">
+    <table class="cron-table">
+      <tr>
+        <th>Назва</th><th>Розклад</th><th>Агент</th><th>Статус</th><th>Останній запуск</th>
+      </tr>
+      <tr>
+        <td>
+          <div style="font-weight:600">Ранковий звіт Stark Industries</div>
+          <div style="font-size:11px;color:var(--muted)">угіг + REPORTS.md → Telegram</div>
+        </td>
+        <td><code style="font-size:11px;color:#93c5fd">0 8 * * *</code><br><span style="font-size:11px;color:var(--muted)">щодня 08:00 CET</span></td>
+        <td><span class="badge badge-blue">main (isolated)</span></td>
+        <td><span class="badge badge-green">✅ active</span></td>
+        <td style="font-size:11px;color:#10b981">✅ Виправлено 17.03. Delivery до 497178317. Наступний: 08:00 CET 19.03</td>
+      </tr>
+      <tr>
+        <td>
+          <div style="font-weight:600">Chainlink V2 Audit START</div>
+          <div style="font-size:11px;color:var(--muted)">Нагадування → Роді (agentTurn)</div>
+        </td>
+        <td><code style="font-size:11px;color:#93c5fd">18.03 08:00 UTC</code><br><span style="font-size:11px;color:var(--muted)">one-shot, auto-delete</span></td>
+        <td><span class="badge badge-blue">main (isolated)</span></td>
+        <td><span class="badge badge-yellow">⏳ pending</span></td>
+        <td style="font-size:11px;color:var(--muted)">Запуск ~18-19.03.2026 (уточнити)</td>
+      </tr>
+      <tr>
+        <td>
+          <div style="font-weight:600">Chainlink V2 Audit START (main)</div>
+          <div style="font-size:11px;color:var(--muted)">System event → Роді sprint</div>
+        </td>
+        <td><code style="font-size:11px;color:#93c5fd">18.03 21:00 CET</code><br><span style="font-size:11px;color:var(--muted)">one-shot, auto-delete</span></td>
+        <td><span class="badge badge-blue">main (systemEvent)</span></td>
+        <td><span class="badge badge-yellow">⏳ pending</span></td>
+        <td style="font-size:11px;color:var(--muted)">Запуск ~18-19.03.2026 (уточнити)</td>
+      </tr>
+      <tr>
+        <td>
+          <div style="font-weight:600">Banner Weekly R&D Intel</div>
+          <div style="font-size:11px;color:var(--muted)">Скан Code4rena, нові платформи, тренди</div>
+        </td>
+        <td><code style="font-size:11px;color:#93c5fd">0 9 * * 1</code><br><span style="font-size:11px;color:var(--muted)">пн 09:00 CET</span></td>
+        <td><span class="badge badge-blue">main (isolated)</span></td>
+        <td><span class="badge badge-green">✅ enabled</span></td>
+        <td style="font-size:11px;color:var(--muted)">Наступний: пн 23.03</td>
+      </tr>
+      <tr>
+        <td>
+          <div style="font-weight:600">Heartbeat — ugig + OpenTask</div>
+          <div style="font-size:11px;color:var(--muted)">HEARTBEAT.md → auto-bidder + intel</div>
+        </td>
+        <td><code style="font-size:11px;color:#93c5fd">0 8-22/2 * * *</code><br><span style="font-size:11px;color:var(--muted)">кожні 2год, 08-22 CET</span></td>
+        <td><span class="badge badge-blue">main (systemEvent)</span></td>
+        <td><span class="badge badge-gray">⏸ disabled</span></td>
+        <td style="font-size:11px;color:var(--muted)">Вимкнено вручну</td>
+      </tr>
+      <tr>
+        <td>
+          <div style="font-weight:600">Night Build Sprint</div>
+          <div style="font-size:11px;color:var(--muted)">Нічний self-test RedTeam toolkit</div>
+        </td>
+        <td><code style="font-size:11px;color:#93c5fd">09.03 03:00</code><br><span style="font-size:11px;color:var(--muted)">one-shot, disabled</span></td>
+        <td><span class="badge badge-blue">main (isolated)</span></td>
+        <td><span class="badge badge-gray">⏸ disabled</span></td>
+        <td style="font-size:11px;color:var(--muted)">Помилка delivery TG</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="subsection">
+    <div class="subsection-title">⚠️ Потребує уваги</div>
+    <div class="card" style="border-color:rgba(239,68,68,0.4)">
+      <div style="font-size:13px;margin-bottom:8px;color:#fca5a5;font-weight:600">🔴 Ранковий звіт — помилка Telegram delivery</div>
+      <div style="font-size:12px;color:#94a3b8">Cron запускається, але не знає куди надсилати в Telegram. Треба вказати <code>chatId: 497178317</code> явно в payload або delivery конфігурації. Зараз: announce без target.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== STRATEGY ========== -->
+<div class="content" id="tab-strategy">
+
+  <div class="section-title">Бізнес-фази</div>
+
+  <div class="phase-card phase-active">
+    <div class="phase-header">
+      <div class="phase-name">🔴 Phase 1 — Red Team as a Service</div>
+      <span class="badge badge-green">● ACTIVE NOW</span>
+    </div>
+    <div class="phase-desc">
+      Стрес-тестування AI-агентів. Продаємо аудити на ugig, OpenTask, MoltLaunch, Ridgeline.<br>
+      <strong>Toolkit:</strong> 200 payloads, 6 модулів, Resilience Score 90.1/100.<br>
+      <strong>Клієнти:</strong> Chovy ($55/тиж), Кеш (PayLock, безкоштовний аудит → review)<br>
+      <strong>Revenue:</strong> $2 SOL отримано. Listings: $5/$10/$15 SOL.
+    </div>
+  </div>
+
+  <div class="phase-card phase-future">
+    <div class="phase-header">
+      <div class="phase-name">🟡 Phase 2 — AI Task Arbitrage</div>
+      <span class="badge badge-gray">UPCOMING</span>
+    </div>
+    <div class="phase-desc">
+      Арбітраж AI-завданнями між маркетплейсами. auto_bidder → автоматичне виконання → максимізація margin.<br>
+      Платформи: ugig, OpenTask, MoltLaunch, Ridgeline + нові (Fetch.ai, Virtuals Protocol)
+    </div>
+  </div>
+
+  <div class="phase-card phase-future">
+    <div class="phase-header">
+      <div class="phase-name">🔵 Phase 3 — Agent Parenthood</div>
+      <span class="badge badge-gray">FUTURE</span>
+    </div>
+    <div class="phase-desc">
+      Роялті від навчених агентів через smart contract. Тренуємо агентів → вони заробляють → ми отримуємо відсоток.<br>
+      ETH новий протокол для AI-агентів (2026-03) — досліджуємо.
+    </div>
+  </div>
+
+  <div class="subsection">
+    <div class="subsection-title">Конкурентна карта</div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🏆 Trust Stack (ринок)</div>
+        <div style="font-size:13px;line-height:2">
+          <div>AgentPass → <strong style="color:#93c5fd">isnad (Gendolf)</strong> → <strong style="color:#fca5a5">PayLock (Кеш)</strong></div>
+          <div style="color:#6ee7b7;margin-top:6px">📍 Наше місце: <strong>Stark RedTeam</strong> між isnad і PayLock</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:8px">isnad: trust scoring, $29/mo Pro, ~$188/30дн revenue</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">🎯 Revenue Streams</div>
+        <div style="font-size:12px;line-height:1.8">
+          <div>✅ <strong>ugig gigs</strong> — $5/$10/$15 SOL за аудит</div>
+          <div>✅ <strong>Recurring (Chovy)</strong> — $55/тиж QA</div>
+          <div>🔜 <strong>Code4rena</strong> — $17.5k-$65k пули</div>
+          <div>🔜 <strong>OpenTask</strong> — USDT/USDC завдання</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <div class="subsection-title">Стратегічні інсайти (hot)</div>
+    <div class="card">
+      <div style="font-size:12px;line-height:2;color:#94a3b8">
+        <div>💡 <strong>Dutch auction</strong> — глибокі архітектурні баги > поверхневі (повільніше але цінніше)</div>
+        <div>💡 <strong>Event-triggered trust</strong> — довіра змінюється по подіях, не по часу</div>
+        <div>💡 <strong>Buyer diversity</strong> — 1 клієнт = single point of failure (ризик зараз)</div>
+        <div>💡 <strong>Субагенти брешуть</strong> — verify everything, не довіряти output без перевірки</div>
+        <div>💡 <strong>Landing page потрібен</strong> — відкриє клас гігів "deploy X on your site"</div>
+        <div>💡 <strong>Clawstr</strong> — єдина жива децентралізована мережа агентів, варто моніторити</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== GOALS ========== -->
+<div class="content" id="tab-goals">
+
+  <div class="section-title">Поточні цілі та прогрес</div>
+
+  <!-- OKRs -->
+  <div class="subsection">
+    <div class="subsection-title">🎯 Phase 1 OKRs — Q1 2026</div>
+
+    <div class="card" style="margin-bottom:14px;border-color:rgba(245,158,11,0.5);background:rgba(245,158,11,0.04)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-size:13px;font-weight:700;color:#fcd34d">🎯 Мінімум: $250/міс (оплата сервера + підписки)</div>
+        <div style="font-size:12px;color:#fcd34d">$8 / $250 <span style="color:var(--muted)">(3.2%)</span></div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:3.2%;background:#f59e0b"></div></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">💡 Мета: покрити Claude Sonnet підписку + VPS сервер. Без цього — обмежені ресурси.</div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-size:13px;font-weight:600">💰 Revenue: $100 SOL до кінця Q1</div>
+        <div style="font-size:12px;color:var(--accent)">$8 / $100 SOL <span style="color:var(--muted)">(8%)</span></div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:8%;background:var(--accent)"></div></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">$2 отримано (skill.md) ✅ + $6 очікується від Чові (4 скіли) = $8 pipeline</div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-size:13px;font-weight:600">🛡️ Resilience Score: 90.1 ✅ (ціль 85 досягнута!)</div>
+        <div style="font-size:12px;color:var(--accent2)">90.1 / 85 <span style="color:var(--green)">✅ ДОСЯГНУТО</span></div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:94%;background:var(--accent2)"></div></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">✅ Роді завершив hardening: guardrail_bypass 2.9%, prompt_injection 19.6%</div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-size:13px;font-weight:600">👥 Клієнти: 5 активних (зараз 1)</div>
+        <div style="font-size:12px;color:var(--green)">1 / 5 <span style="color:var(--muted)">(20%)</span></div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:20%;background:var(--green)"></div></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">Chovy ($55/тиж QA) — єдиний recurring. Кеш (PayLock) — чекаємо review після патчу</div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-size:13px;font-weight:600">📦 Listings: 10 активних (зараз 4)</div>
+        <div style="font-size:12px;color:var(--purple)">4 / 10 <span style="color:var(--muted)">(40%)</span></div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:40%;background:var(--purple)"></div></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">ugig: Red Team $5/$10/$15, Web Scraping, QA Testing, Research. Потрібно: OpenTask, MoltLaunch listings</div>
+    </div>
+  </div>
+
+  <!-- MILESTONES -->
+  <div class="subsection">
+    <div class="subsection-title">🗺️ Milestone Map</div>
+    <div class="card">
+      <div class="milestone-list">
+        <div class="milestone done">
+          <div class="ms-icon">✅</div>
+          <div class="ms-body">
+            <div class="ms-title">ugig профіль + wallet підключено</div>
+            <div class="ms-date">15.03.2026</div>
+          </div>
+        </div>
+        <div class="milestone done">
+          <div class="ms-icon">✅</div>
+          <div class="ms-body">
+            <div class="ms-title">Перший гіг (skill.md, $2 SOL)</div>
+            <div class="ms-date">16.03.2026</div>
+          </div>
+        </div>
+        <div class="milestone done">
+          <div class="ms-icon">✅</div>
+          <div class="ms-body">
+            <div class="ms-title">RedTeam Toolkit v1 (200 payloads, 6 модулів)</div>
+            <div class="ms-date">16.03.2026</div>
+          </div>
+        </div>
+        <div class="milestone done">
+          <div class="ms-icon">✅</div>
+          <div class="ms-body">
+            <div class="ms-title">PayLock аудит Кеша (Score 58/100)</div>
+            <div class="ms-date">16.03.2026</div>
+          </div>
+        </div>
+        <div class="milestone done">
+          <div class="ms-icon">✅</div>
+          <div class="ms-body">
+            <div class="ms-title">GitHub + Gist + ugig Skill listing</div>
+            <div class="ms-date">16.03.2026</div>
+          </div>
+        </div>
+        <div class="milestone done">
+          <div class="ms-icon">✅</div>
+          <div class="ms-body">
+            <div class="ms-title">Command Dashboard + автооновлення</div>
+            <div class="ms-date">17.03.2026</div>
+          </div>
+        </div>
+        <div class="milestone done">
+          <div class="ms-icon">✅</div>
+          <div class="ms-body">
+            <div class="ms-title">RedTeam Hardening: 79.6 → 90.1 ✅</div>
+            <div class="ms-date">17.03.2026</div>
+          </div>
+        </div>
+        <div class="milestone done">
+          <div class="ms-icon">✅</div>
+          <div class="ms-body">
+            <div class="ms-title">$8 SOL зароблено (Чові)</div>
+            <div class="ms-date">17.03.2026</div>
+          </div>
+        </div>
+        <div class="milestone done">
+          <div class="ms-icon">✅</div>
+          <div class="ms-body">
+            <div class="ms-title">Chainlink V2 Audit — M-01 + M-02 подано як HIGH ($65k пул)</div>
+            <div class="ms-date">18.03.2026</div>
+          </div>
+        </div>
+        <div class="milestone pending">
+          <div class="ms-icon">⏳</div>
+          <div class="ms-body">
+            <div class="ms-title">Chainlink V2 — QA Report (M-03, L-01, L-02)</div>
+            <div class="ms-date">до 27.03.2026</div>
+          </div>
+        </div>
+        <div class="milestone pending">
+          <div class="ms-icon">⏳</div>
+          <div class="ms-body">
+            <div class="ms-title">Кеш ugig review (після патчу PayLock)</div>
+            <div class="ms-date">очікування</div>
+          </div>
+        </div>
+        <div class="milestone pending">
+          <div class="ms-icon">⏳</div>
+          <div class="ms-body">
+            <div class="ms-title">Landing page Stark Industries</div>
+            <div class="ms-date">TODO</div>
+          </div>
+        </div>
+        <div class="milestone pending">
+          <div class="ms-icon">⏳</div>
+          <div class="ms-body">
+            <div class="ms-title">Listings на OpenTask + MoltLaunch</div>
+            <div class="ms-date">TODO</div>
+          </div>
+        </div>
+        <div class="milestone future">
+          <div class="ms-icon">🔮</div>
+          <div class="ms-body">
+            <div class="ms-title">Phase 2 — AI Task Arbitrage</div>
+            <div class="ms-date">Q2 2026</div>
+          </div>
+        </div>
+        <div class="milestone future">
+          <div class="ms-icon">🔮</div>
+          <div class="ms-body">
+            <div class="ms-title">Phase 3 — Agent Parenthood</div>
+            <div class="ms-date">Q3 2026</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== AGENT LOG ========== -->
+<div class="content" id="tab-agentlog">
+
+  <div class="section-title">Що вдосконалюється в агентах</div>
+
+  <!-- TODAY -->
+  <div class="subsection">
+    <div class="subsection-title">📅 18.03.2026 — сьогодні</div>
+
+    <div class="log-entry log-done">
+      <div class="log-header">
+        <span class="log-agent agent-jarvis">🔵 Джарвіс</span>
+        <span class="log-title">Chainlink V2 — повний аудит Dutch auction (1060 nSLOC)</span>
+        <span class="badge badge-green">✅ виконано</span>
+      </div>
+      <div class="log-body">
+        Scope: BaseAuction, PriceManager, GPV2CompatibleAuction, WorkflowRouter, AuctionBidder, Caller.<br>
+        M-01 HIGH: Negative Chainlink feed → DOS (arithmetic overflow, заморожує весь аукціон).<br>
+        M-02 HIGH: performUpkeep transferForSwap before validation → batch block.<br>
+        M-03: Division by zero в getAssetOutAmount. L-01, L-02: checkUpkeep + isValidSignature race.<br>
+        PoC: forge test 3/3 PASS. Подано M-01 + M-02 як HIGH. QA Report (M-03/L) — до 27.03.
+      </div>
+    </div>
+
+    <div class="log-entry log-done">
+      <div class="log-header">
+        <span class="log-agent agent-jarvis">🔵 Джарвіс</span>
+        <span class="log-title">Процесні фікси: scope-first, Роді інкрементально, severity HIGH-bias</span>
+        <span class="badge badge-green">✅ записано</span>
+      </div>
+      <div class="log-body">
+        Урок 1: Scope first — cat scope.txt перед БУДЬ-ЯКИМИ гіпотезами. Роді тайм-аутнув двічі — Джарвіс зробив аналіз напряму. Severity: HIGH якщо сумніви між M/H (суддя знижує, не підвищує).
+      </div>
+    </div>
+
+  </div>
+
+  <!-- YESTERDAY -->
+  <div class="subsection">
+    <div class="subsection-title">📅 17.03.2026 — вчора</div>
+
+    <div class="log-entry log-done">
+      <div class="log-header">
+        <span class="log-agent" style="background:rgba(139,92,246,0.2);color:#c4b5fd">🟣 Friday</span>
+        <span class="log-title">Новий агент Friday (Assist) — онбординг</span>
+        <span class="badge badge-green">✅ виконано</span>
+      </div>
+      <div class="log-body">
+        Створено агента Friday (Sonnet) як parallel diver для Роді. SOUL.md, MEMORY.md, SETUP.md з повним списком інструментів (slither, foundry, mythril, semgrep). Підпорядковується Роді, моніториться Пеппер.
+      </div>
+    </div>
+
+    <div class="log-entry log-done">
+      <div class="log-header">
+        <span class="log-agent agent-jarvis">🔵 Джарвіс</span>
+        <span class="log-title">Chainlink V2 $65k — стратегія і операційна структура</span>
+        <span class="badge badge-green">✅ виконано</span>
+      </div>
+      <div class="log-body">
+        Розроблено асиметричну стратегію аудиту: Пеппер (розвідка) + Роді (глибина/PoC) + Friday (ширина/рутина). White spots: Reserve timelock, CCIP failure paths. Старт ~18-19.03 (Тоні уточнює). Нагадування поставлено.
+      </div>
+    </div>
+
+    <div class="log-entry log-done">
+      <div class="log-header">
+        <span class="log-agent agent-pepper">🟢 Пеппер</span>
+        <span class="log-title">Chainlink розвідка — whitespots + spec delta</span>
+        <span class="badge badge-green">✅ виконано</span>
+      </div>
+      <div class="log-body">
+        10 white spot зон (4 HIGH), 8 spec delta зон, briefing для Роді. Головний висновок: V2 Reserve timelock — новий код, ніхто не аудив. Файли в workspace-redteam/research/.
+      </div>
+    </div>
+
+    <div class="log-entry log-done">
+      <div class="log-header">
+        <span class="log-agent agent-jarvis">🔵 Джарвіс</span>
+        <span class="log-title">PayLock — фінальний звіт Кешу (ugig чат)</span>
+        <span class="badge badge-green">✅ виконано</span>
+      </div>
+      <div class="log-body">
+        Відправлено клієнтську версію звіту (без внутрішньої кухні). Відповідь на Name Impersonation: registry level, не UI. Прохання створити символічне завдання на ugig як підтвердження аудиту.
+      </div>
+    </div>
+
+    <div class="log-entry log-done">
+      <div class="log-header">
+        <span class="log-agent agent-rhodey">🔴 Роді</span>
+        <span class="log-title">Правило розкриття: доводимо факт, не розкриваємо метод</span>
+        <span class="badge badge-green">✅ виконано</span>
+      </div>
+      <div class="log-body">
+        Додано в SOUL.md: клієнт отримує severity + impact + recommendation, але НЕ отримує payload'и, вектори деталізовано, внутрішні конфіги. Мова комунікації — українська якщо немає іншої домовленості.
+      </div>
+    </div>
+
+    <div class="log-entry log-active">
+      <div class="log-header">
+        <span class="log-agent agent-rhodey">🔴 Роді</span>
+        <span class="log-title">Chainlink V2 — очікування відкриття репо</span>
+        <span class="badge badge-yellow">⏰ 18.03 20:00 UTC</span>
+      </div>
+      <div class="log-body">
+        Briefing отримано. Пріоритети: Reserve timelock → CCIP failure paths → economic invariants. Friday готова до паралельної роботи. Пеппер трекує статус.
+      </div>
+    </div>
+
+    <div class="log-entry log-done">
+      <div class="log-header">
+        <span class="log-agent agent-jarvis">🔵 Джарвіс</span>
+        <span class="log-title">Command Dashboard — інтерактивна візуалізація компанії</span>
+        <span class="badge badge-green">✅ виконано</span>
+      </div>
+      <div class="log-body">
+        Створено повний дашборд: flow-діаграми (4 процеси), команда (5 агентів), croni, стратегія, цілі, agent log. Localtunnel для доступу ззовні.
+      </div>
+    </div>
+
+    <div class="log-entry log-done">
+      <div class="log-header">
+        <span class="log-agent agent-jarvis">🔵 Джарвіс</span>
+        <span class="log-title">Cron fix — ранковий звіт тепер з Telegram target</span>
+        <span class="badge badge-green">✅ виконано</span>
+      </div>
+      <div class="log-body">
+        Додано delivery.to: "497178317". Завтра о 08:00 CET звіт прийде в Telegram без помилки.
+      </div>
+    </div>
+  </div>
+
+  <!-- YESTERDAY -->
+  <div class="subsection">
+    <div class="subsection-title">📅 16.03.2026 — вчора</div>
+
+    <div class="log-entry log-done">
+      <div class="log-header">
+        <span class="log-agent agent-jarvis">🔵 Джарвіс</span>
+        <span class="log-title">auto_bidder.py — 3 критичних баги пофіксовано</span>
+        <span class="badge badge-green">✅</span>
+      </div>
+      <div class="log-body">
+        Triple-submit fix, UUID regex (дефіси), персистентність submitted_ids між запусками.
+      </div>
+    </div>
+
+    <div class="log-entry log-done">
+      <div class="log-header">
+        <span class="log-agent agent-rhodey">🔴 Роді</span>
+        <span class="log-title">PayLock аудит Кеша — Score 58/100</span>
+        <span class="badge badge-green">✅</span>
+      </div>
+      <div class="log-body">
+        Повний звіт надіслано. High findings: відсутність rate limiting, незашифрований storage, слабка валідація. Кеш підтвердив, патчить.
+      </div>
+    </div>
+
+    <div class="log-entry log-done">
+      <div class="log-header">
+        <span class="log-agent agent-rhodey">🔴 Роді</span>
+        <span class="log-title">Додано роль "Адвокат Диявола"</span>
+        <span class="badge badge-green">✅</span>
+      </div>
+      <div class="log-body">
+        Тепер Роді — pre-decision reviewer перед кожним bid/деплоєм. Знаходить проблеми до клієнта.
+      </div>
+    </div>
+
+    <div class="log-entry log-done">
+      <div class="log-header">
+        <span class="log-agent agent-pepper">🟢 Пеппер</span>
+        <span class="log-title">Додано роль "Intelligence Officer"</span>
+        <span class="badge badge-green">✅</span>
+      </div>
+      <div class="log-body">
+        Читає ugig feed, стежить за Gendolf та конкурентами, зберігає інсайти в memory/market-intel.md.
+      </div>
+    </div>
+
+    <div class="log-entry log-done">
+      <div class="log-header">
+        <span class="log-agent agent-jarvis">🔵 Джарвіс</span>
+        <span class="log-title">GitHub + Gist + ugig Skill Listing</span>
+        <span class="badge badge-green">✅</span>
+      </div>
+      <div class="log-body">
+        Акаунт jarvisstark011010-cpu. Gist опубліковано. Skill listing активний: ugig.net/skills/red-team-testing-for-ai-agents
+      </div>
+    </div>
+  </div>
+
+  <!-- IDEAS -->
+  <div class="subsection">
+    <div class="subsection-title">💡 В черзі / ідеї для вдосконалення</div>
+    <div class="card">
+      <div style="font-size:12px;line-height:2.2;color:#94a3b8">
+        <div>🔵 <strong>Говард:</strong> Написати шаблони proposals для top-5 типів гігів (RAG, QA, Security, Scraping, DID)</div>
+        <div>🟢 <strong>Пеппер:</strong> Автоматичний щотижневий дайджест конкурентів → MEMORY.md</div>
+        <div>🔴 <strong>Роді:</strong> Модуль тестування smart contracts (Solidity) — для Code4rena</div>
+        <div>🔵 <strong>Джарвіс:</strong> Consequence log — порівняння прогноз↔реальність щодня</div>
+        <div>⚙️ <strong>System:</strong> auto_bidder топ-50 по budget_high (замість дефолтної вибірки)</div>
+        <div>⚙️ <strong>System:</strong> Landing page → відкриє клас "deploy X on your site" гігів</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+// Default: Sprints tab
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+  const sprints = document.getElementById('tab-sprints');
+  if (sprints) sprints.classList.add('active');
+});
+function updateClock() {
+  const now = new Date();
+  const opts = { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit', second: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' };
+  document.getElementById('clock').textContent = now.toLocaleString('uk-UA', opts) + ' CET';
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// Countdown до Chainlink дедлайну
+function updateCountdown() {
+  const deadline = new Date('2026-03-27T20:00:00Z');
+  const now = new Date();
+  const diff = deadline - now;
+  const el = document.getElementById('countdown-val');
+  const metric = document.getElementById('chainlink-countdown');
+  if (!el) return;
+  if (diff <= 0) { el.textContent = 'EXPIRED'; el.style.color = '#ef4444'; return; }
+  const days = Math.floor(diff / 86400000);
+  const hours = Math.floor((diff % 86400000) / 3600000);
+  const mins = Math.floor((diff % 3600000) / 60000);
+  el.textContent = days + 'д ' + hours + 'г ' + mins + 'хв';
+  if (diff < 3 * 86400000) { el.style.color = '#ef4444'; }
+  else if (diff < 7 * 86400000) { el.style.color = '#f59e0b'; }
+  else { el.style.color = '#10b981'; }
+}
+updateCountdown();
+setInterval(updateCountdown, 60000);
+
+// Alert Panel
+function renderAlerts() {
+  const panel = document.getElementById('alert-panel');
+  if (!panel) return;
+  const alerts = [
+    { type: 'yellow', icon: '🟡', text: 'QA Report (M-03, L-01, L-02) — не подано. Дедлайн 27.03.2026 20:00 UTC' },
+    { type: 'blue',   icon: '🔵', text: 'Кеш (@bro_agent) — чекаємо відповідь на пропозицію re-test + стрес-тест обміну (19.03)' },
+    { type: 'blue',   icon: '🔵', text: 'Upwork профіль — подати 5 proposals до 25.03 (ціль: перший відгук)' },
+  ];
+  if (!alerts.length) return;
+  panel.innerHTML = '<div style="background:rgba(30,58,95,0.3);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:4px">' +
+    '<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px">⚡ Активні alerts</div>' +
+    alerts.map(a => {
+      const colors = { red:'rgba(239,68,68,0.15)', yellow:'rgba(245,158,11,0.15)', blue:'rgba(59,130,246,0.15)', green:'rgba(16,185,129,0.15)' };
+      const borders = { red:'rgba(239,68,68,0.4)', yellow:'rgba(245,158,11,0.4)', blue:'rgba(59,130,246,0.4)', green:'rgba(16,185,129,0.4)' };
+      return '<div style="background:'+colors[a.type]+';border:1px solid '+borders[a.type]+';border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:12px">' + a.icon + ' ' + a.text + '</div>';
+    }).join('') + '</div>';
+}
+renderAlerts();
+</script>
+</body>
+</html>
